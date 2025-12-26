@@ -33,7 +33,7 @@ export default function ProductModal({
   const [variantImages, setVariantImages] = useState<any[]>([]);
   const [isLoadings, setIsLoading] = useState<any>(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { register, handleSubmit, control, setValue, watch } = useForm<any>({
+  const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<any>({
     defaultValues: {
       name: '',
       price: 0,
@@ -57,6 +57,7 @@ export default function ProductModal({
     queryKey: ["getCategoriesWithSubcategoriesData", id],
     queryFn: () => getCategoriesWithSubcategoriesApi(`vendor/${id}/`),
   })
+
   const handleCategoryChange = (selectedOption: any) => {
     setValue('category', selectedOption?.value);
     setValue('subcategory', null);
@@ -68,6 +69,28 @@ export default function ProductModal({
       })) || []
     );
   };
+
+  useEffect(() => {
+    if (productForm?.category) {
+      const selectedCat = data?.data?.find(
+        (cat: any) => cat?.id === productForm.category
+      );
+
+      const subOptions =
+        selectedCat?.subcategories?.map((sub: any) => ({
+          value: sub.id,
+          label: sub.name,
+        })) || [];
+
+      setSubcategoryOptions(subOptions);
+
+      // Restore selected subcategory
+      if (productForm?.subcategory) {
+        setValue("subcategory", productForm.subcategory);
+      }
+    }
+  }, [productForm, data, setValue]);
+
 
   const categoryOptions = data?.data?.map((cat: any) => ({
     value: cat?.id,
@@ -161,6 +184,8 @@ export default function ProductModal({
         height: data?.height,
         discount: data?.discount,
         stock_quantity: data?.stock_quantity,
+        category: data?.category,
+        subcategory: data?.subcategory,
         ...(productForm
           ? {}
           : {
@@ -262,8 +287,8 @@ export default function ProductModal({
               </div>
 
               {/* Category Dropdown */}
-              <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-6">
-                <label className="block text-sm font-bold  mb-1">Category</label>
+              <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-6 py-1">
+                <label className="block text-sm font-bold  mb-1">Category <span className="text-red-500 ml-1">*</span></label>
                 <Controller
                   name="category"
                   control={control}
@@ -272,15 +297,21 @@ export default function ProductModal({
                       {...field}
                       options={categoryOptions}
                       placeholder="Select Category"
-                      onChange={handleCategoryChange}
+                      onChange={(selected: any) => {
+                        field.onChange(selected?.value);
+                        handleCategoryChange(selected);
+                      }}
                       value={categoryOptions.find((opt: any) => opt.value === field.value) || null}
                     />
                   )}
                 />
+                {errors.category && (
+                  <p className="text-red-500 text-sm mt-1">{typeof errors.category?.message === 'string' ? errors.category.message : ''}</p>
+                )}
               </div>
 
               {/* Subcategory Dropdown */}
-              <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-6">
+              <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-6 py-1">
                 <label className="block text-sm font-bold  mb-1">subcategory</label>
                 <Controller
                   name="subcategory"
@@ -292,11 +323,14 @@ export default function ProductModal({
                       placeholder="Select Subcategory"
                       isDisabled={!subcategoryOptions.length}
                       value={subcategoryOptions.find((opt: any) => opt.value === field.value) || null}
-                      onChange={(selected: any) => setValue('subcategory', selected?.value)}
+                      onChange={(selected: any) => {
+                        field.onChange(selected?.value);
+                      }}
                     />
                   )}
                 />
               </div>
+
               {/* </div> */}
               <div className='col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-6'>
                 <Input label="Brand Name" {...register('brand_name')} />
@@ -329,8 +363,8 @@ export default function ProductModal({
                 <label className="block text-sm font-medium text-gray-700">Description</label>
                 <textarea  {...register('description')} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
               </div> */}
-                   <div className='col-span-12 lg:col-span-12'>
-              <label className="block text-sm font-bold  my-2">Description</label>
+              <div className='col-span-12 lg:col-span-12'>
+                <label className="block text-sm font-bold  my-2">Description</label>
                 <Controller
                   name="description"
                   control={control}
